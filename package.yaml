@@ -1,0 +1,37 @@
+# This YAML file describes your package. Stack will automatically generate a
+# Cabal file when you run `stack build`. See the hpack website for help with
+# this file: <https://github.com/sol/hpack>.
+name: twerk
+version: '0.1.0'
+github: "berewt/twerk"
+license: MIT
+author: "Nicolas Biri"
+maintainer: "Nicolas Biri"
+synopsis: "Read TWitter ERKhive CSV file"
+description: "CSV parser for twitter archive"
+category: Data
+
+extra-source-files:
+- CHANGELOG.md
+- LICENSE.md
+- package.yaml
+- README.md
+- stack.yaml
+
+ghc-options: -Wall
+
+library:
+  dependencies:
+  - base
+  - bytestring
+  - cassava
+  - containers
+  - pipes
+  - pipes-bytestring
+  - pipes-csv
+  - tagsoup
+  - text
+  - time
+  - url
+  - vector
+  source-dirs: library
