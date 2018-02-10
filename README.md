@@ -1,6 +1,6 @@
 # [Twerk][] (Twitter Erkive reader)
 
-This libraray contains a parser for the twitter archive CSV files and
+This library contains a parser for the twitter archive CSV files and
 some pipes utilities to ease their processing.
 
 See the documentation of the [Twerk.Pipes] module for some examples.
