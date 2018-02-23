@@ -150,6 +150,7 @@ instance FromRecord Tweet where
     eitherImport x = maybe (Left $ Text.pack x)
                            (Right . EmbeddedURL)
                            (Network.importURL x)
+    -- this unfold the list of expanded url provided in the archive as "url1,url2,..."
     urlList = fmap eitherImport . List.unfoldr go
     in Tweet <$> v CSV..! 0
              <*> buildTweetRef (v CSV..! 2) (v CSV..! 1) (pure $ pure Nothing)

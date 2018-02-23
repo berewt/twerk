@@ -113,6 +113,7 @@ between lo hi = let
   predicate = liftA2 (&&) (go (<=) lo) (go (>=) hi)
   in P.filter . (predicate .)
 
+-- | If-then-else
 ite :: Monad m => (a -> Bool) -> Pipe a b m () -> Pipe a c m () -> Pipe a (Either b c) m ()
 ite predicate l r = for cat $ \x -> yield x >-> if predicate x
   then l >-> P.map Left
