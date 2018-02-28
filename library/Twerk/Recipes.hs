@@ -31,23 +31,31 @@ timeProcessing go f = do
   tz <- T.getCurrentTimeZone
   withFile f ReadMode (`go` tz)
 
-tweetsHours :: MonadIO m => Handle -> T.TimeZone -> Producer Int m ()
-tweetsHours h tz = validTweets h >-> P.map
-  (T.todHour . T.localTimeOfDay . T.utcToLocalTime tz . getTime . date)
 
-tweetsWeekOfDay :: MonadIO m => Handle -> T.TimeZone -> Producer Int m ()
-tweetsWeekOfDay h tz = validTweets h >-> P.map
-  ( (\(_, _, d) -> d)
-  . T.toWeekDate
-  . T.localDay
-  . T.utcToLocalTime tz
-  . getTime
-  . date
-  )
+infoFromValidTweets :: MonadIO m => (Tweet -> a) -> Handle -> Producer a m ()
+infoFromValidTweets f h = validTweets h >-> P.map f
+
+tweetsHours :: MonadIO m => T.TimeZone -> Handle -> Producer Int m ()
+tweetsHours tz = let
+  extractHour = T.todHour . T.localTimeOfDay . T.utcToLocalTime tz . getTime . date
+  in infoFromValidTweets extractHour
+
+tweetsWeekOfDay :: MonadIO m => T.TimeZone -> Handle -> Producer Int m ()
+tweetsWeekOfDay tz = let
+  extractWeekOfDay =
+    ( (\(_, _, d) -> d)
+    . T.toWeekDate
+    . T.localDay
+    . T.utcToLocalTime tz
+    . getTime
+    . date
+    )
+ in infoFromValidTweets extractWeekOfDay
 
 tweetsYears :: MonadIO m => Handle -> Producer Integer m ()
-tweetsYears h = validTweets h
-  >-> P.map ((\(y, _, _) -> y) . T.toGregorian . T.utctDay . getTime . date)
+tweetsYears = let
+  extractYear = ((\(y, _, _) -> y) . T.toGregorian . T.utctDay . getTime . date)
+  in infoFromValidTweets extractYear
 
 twweetsWithWord :: MonadIO m => Text -> Handle -> Producer Tweet m ()
 twweetsWithWord word h = validTweets h >-> containingInsensitive word
@@ -68,17 +76,21 @@ mostMentionedHashtags p =
 
 type YearMonth = (Integer, Int)
 
-mostMentionedHandlesByMonth
-  :: Monad m
-  => Producer Tweet m ()
-  -> Producer (YearMonth, [(Text, Natural)]) m ()
-mostMentionedHandlesByMonth p =
-  let tweetMonth =
-        (\(y, m, _) -> (y, m)) . T.toGregorian . T.utctDay . getTime . date
+tweetMonth :: T.UTCTime -> YearMonth
+tweetMonth = (\(y, m, _) -> (y, m)) . T.toGregorian . T.utctDay
+
+mostMentionedHandlesByTimeInterval
+  :: (Eq a, Monad m)
+  => (T.UTCTime -> a)
+  -> Producer Tweet m ()
+  -> Producer (a, [(Text, Natural)]) m ()
+mostMentionedHandlesByTimeInterval f p =
+  let fFromTweet = f . getTime  . date
+      tweetHandlesAsText = fmap getHandle . handles . content
       addHandle = flip $ M.alter (Just . maybe 1 (+ 1))
-      addTweet Nothing tw = addTweet (Just (tweetMonth tw, M.empty)) tw
+      addTweet Nothing tw = addTweet (Just (fFromTweet tw, M.empty)) tw
       addTweet (Just (k, acc)) tw =
-        Just . (,) k . L.foldl' addHandle acc . fmap getHandle . handles $ content tw
+        Just . (,) k . L.foldl' addHandle acc $ tweetHandlesAsText tw
       countSplitByMonth =
-        PG.folds addTweet Nothing id . view (PG.groupsBy ((==) `on` tweetMonth))
-     in  countSplitByMonth p >-> P.concat >-> P.map (fmap mostFrequent)
+        PG.folds addTweet Nothing (fmap (fmap mostFrequent)) . view (PG.groupsBy ((==) `on` fFromTweet))
+     in countSplitByMonth p >-> P.concat
