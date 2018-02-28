@@ -184,11 +184,16 @@ newtype Hashtag = Hashtag { getHashtag :: Text }
   deriving (Eq, Ord, Read, Show)
 
 isolateSpecificWords :: Text -> (Text -> a) -> Text -> [a]
-isolateSpecificWords prefix constructor = let
-  getHashtagName = mfilter (not . Text.null) . Just
-                 . Text.takeWhile (liftA2 (||) ('_' ==) Char.isAlphaNum)
-  startsWithHash = fmap snd . filter ((prefix ==) . fst) . fmap (Text.splitAt (Text.length prefix))
-  in Foldable.toList . fmap constructor . getHashtagName <=< startsWithHash . Text.words
+isolateSpecificWords prefix constructor =
+  let extractName = mfilter (not . Text.null) . Just . Text.takeWhile
+        (liftA2 (||) ('_' ==) Char.isAlphaNum)
+      startsWithHash = fmap snd . filter ((prefix ==) . fst) . fmap
+        (Text.splitAt (Text.length prefix))
+  in  Foldable.toList
+      .   fmap constructor
+      .   extractName
+      <=< startsWithHash
+      .   Text.words
 
 
 -- | Isolate hashtags in the content of a tweet.

@@ -26,9 +26,11 @@ library:
   - bytestring
   - cassava
   - containers
+  - lens
   - pipes
   - pipes-bytestring
   - pipes-csv
+  - pipes-group
   - tagsoup
   - text
   - time

@@ -74,9 +74,8 @@ filterRight = P.concat
 
 -- | Build a cumulative occurences 'Map' of the incoming data
 occurencesScan :: (Ord a, Monad m) => Pipe a (Map a Natural) m r
-occurencesScan = let
-  go = pure . maybe 1 (+1)
-  in scan (flip $ Map.alter go) Map.empty id
+occurencesScan =
+  let go = pure . maybe 1 (+ 1) in scan (flip $ Map.alter go) Map.empty id
 
 -- | Fold the produced value as an occurence map.
 --
@@ -86,15 +85,14 @@ occurencesScan = let
 -- If you intend to use all the results, you may want to
 -- reverse the content of the file first.
 occurencesFold :: (Ord a, Monad m) => Producer a m () -> m (Map a Natural)
-occurencesFold = let
-  go = pure . maybe 1 (+1)
-  in fold (flip $ Map.alter go) Map.empty id
+occurencesFold =
+  let go = pure . maybe 1 (+ 1) in fold (flip $ Map.alter go) Map.empty id
 
 -- | Get the nth key-value pairs of a Map
 top :: (Ord b, Num b, Monad m) => Natural -> Pipe (Map a b) [(a, b)] m r
-top n = let
-  compareOccurences = Ord.comparing $ Ord.Down . snd
-  in P.map $ List.genericTake n . List.sortBy compareOccurences . Map.toList
+top n =
+  let compareOccurences = Ord.comparing $ Ord.Down . snd
+  in  P.map $ List.genericTake n . List.sortBy compareOccurences . Map.toList
 
 -- | Filter texts that contain a given substring
 containing :: Monad m => Text -> Pipe Tweet Tweet m r
@@ -102,19 +100,23 @@ containing q = P.filter $ List.any (q `Text.isPrefixOf`) . Text.tails . content
 
 -- | Filter texts that contain a given substring (case insensitive)
 containingInsensitive :: Monad m => Text -> Pipe Tweet Tweet m r
-containingInsensitive q = let
-  predicate = Text.isPrefixOf . Text.toLower
-  in P.filter $ List.any (predicate q) . Text.tails . Text.toLower . content
+containingInsensitive q =
+  let predicate = Text.isPrefixOf . Text.toLower
+  in  P.filter $ List.any (predicate q) . Text.tails . Text.toLower . content
 
 -- | Check if a value is between a lower bound and a higher bound (if provided)
 between :: (Ord b, Monad m) => Maybe b -> Maybe b -> (a -> b) -> Pipe a a m r
-between lo hi = let
-  go = maybe (const True)
-  predicate = liftA2 (&&) (go (<=) lo) (go (>=) hi)
-  in P.filter . (predicate .)
+between lo hi =
+  let go        = maybe (const True)
+      predicate = liftA2 (&&) (go (<=) lo) (go (>=) hi)
+  in  P.filter . (predicate .)
 
 -- | If-then-else
-ite :: Monad m => (a -> Bool) -> Pipe a b m () -> Pipe a c m () -> Pipe a (Either b c) m ()
-ite predicate l r = for cat $ \x -> yield x >-> if predicate x
-  then l >-> P.map Left
-  else r >-> P.map Right
+ite
+  :: Monad m
+  => (a -> Bool)
+  -> Pipe a b m ()
+  -> Pipe a c m ()
+  -> Pipe a (Either b c) m ()
+ite predicate l r = for cat $ \x ->
+  yield x >-> if predicate x then l >-> P.map Left else r >-> P.map Right
